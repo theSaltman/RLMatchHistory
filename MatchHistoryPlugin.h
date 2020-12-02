@@ -1,5 +1,8 @@
 #pragma once
 #pragma comment(lib, "BakkesMod.lib")
+
+#include "bakkesmod/plugin/pluginwindow.h"
+#include "version.h"
 #include "bakkesmod\plugin\bakkesmodplugin.h"
 #include "utils/parser.h"
 #include "bakkesmod/wrappers/GameEvent/ServerWrapper.h"
@@ -14,19 +17,22 @@ const unsigned int displayStats = 7;
 const unsigned int defaultDisplayStats = 5;
 const unsigned int displayTen = 11;
 
+
+
 class MatchHistory : public BakkesMod::Plugin::BakkesModPlugin
 {
 private:
 	string defaultList[displayStats] = { "Playlist","MyTeamGoals","MMR","Time","Win","OtherTeamGoals","Ranked" };
 	string defaultListPrint[defaultDisplayStats] = { "Playlist","Score","MMR","Time","Win" };
 	int xStart = 1455;
-
+	unique_ptr<MMRNotifierToken> notifierToken;
 	unsigned long second = 1;
 	unsigned long minute = 60 * second;
 	unsigned long hour = 60 * minute;
 	unsigned long day = 24 * hour;
 	unsigned long month = 30 * day;
 	unsigned long year = 365 * day;
+	float myMMR;
 
 public:
 	virtual void onLoad();
@@ -44,6 +50,7 @@ public:
 	void getLastTen(string filePath);
 	string getFilePath();
 	string fuzzyTime(unsigned long timeRaw);
+	void UpdateStats(UniqueIDWrapper id);
 
 	map<string, string> matchValues;
 	map<string, int> indexer;
@@ -58,6 +65,7 @@ public:
 	string getLine;
 	string unParsed[displayTen];
 	string parsed[displayTen][defaultDisplayStats];
+
 
 };
 
