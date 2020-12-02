@@ -434,7 +434,7 @@ string MatchHistory::getFilePath() {
 	//cvarManager->log("Entering getFilePath!");
 	UniqueIDWrapper uniqueID;
 	uniqueID = gameWrapper->GetUniqueID();
-	string filePath = gameWrapper->GetDataFolder().string() + "\\" + to_string(uniqueID.GetUID()) + "_MatchHistory.csv";
+	string filePath = gameWrapper->GetDataFolder().string() + "\\" + uniqueID.str() + "_MatchHistory.csv";
 	return filePath;
 	//cvarManager->log("Exiting getFilePath!");
 }
