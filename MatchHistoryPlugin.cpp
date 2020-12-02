@@ -1,6 +1,8 @@
+#include "pch.h"
+
 #include "MatchHistoryPlugin.h"
 
-BAKKESMOD_PLUGIN(MatchHistory, "MatchHistory", "1.1", 0)
+BAKKESMOD_PLUGIN(MatchHistory, "MatchHistory", "1.2", 0)
 
 void MatchHistory::onLoad()
 {
@@ -10,7 +12,7 @@ void MatchHistory::onLoad()
 	gameWrapper->HookEvent("Function TAGame.GFxData_GameEvent_TA.OnCloseScoreboard", bind(&MatchHistory::CloseScoreBoard, this, placeholders::_1));
 	//Setup delegate event to fire on EndGame
 	gameWrapper->HookEvent("Function TAGame.GameEvent_Soccar_TA.EventMatchEnded", bind(&MatchHistory::EndGame, this, placeholders::_1));
-
+	notifierToken = gameWrapper->GetMMRWrapper().RegisterMMRNotifier(bind(&MatchHistory::UpdateStats, this, std::placeholders::_1));
 	string filePath = getFilePath();
 	getTotalLines(filePath);
 }
@@ -194,7 +196,7 @@ void MatchHistory::Render(CanvasWrapper canvas)
 				count++;
 			}
 			distancesX[0][i] = count;
-			
+
 		}
 	}
 	else {
@@ -213,11 +215,11 @@ void MatchHistory::Render(CanvasWrapper canvas)
 			}
 		}
 	}
-/*
-	for (int i = 0; i < defaultDisplayStats - 1; i++) {
-		cvarManager->log(to_string(distancesX[0][i]));
-	}
-*/
+	/*
+		for (int i = 0; i < defaultDisplayStats - 1; i++) {
+			cvarManager->log(to_string(distancesX[0][i]));
+		}
+	*/
 
 
 	int distanceX[defaultDisplayStats - 1];//The distance that each column should be spaced
@@ -366,9 +368,9 @@ void MatchHistory::EndGame(string eventName)
 						matchValues["MyTeamGoals"] = to_string(myScore);
 						matchValues["OtherTeamGoals"] = to_string(otherScore);
 						matchValues["Ranked"] = to_string(playlist.GetbRanked());
-						SteamID steamIdentification;
-						steamIdentification.ID = gameWrapper->GetSteamID();
-						matchValues["MMR"] = to_string((int)gameWrapper->GetMMRWrapper().GetPlayerMMR(steamIdentification, playlistId));
+						UniqueIDWrapper uniqueID;
+						uniqueID = gameWrapper->GetUniqueID();
+						matchValues["MMR"] = to_string((int)myMMR);
 						time_t now = time(NULL);
 						tm nowInfo;
 						localtime_s(&nowInfo, &now);
@@ -383,7 +385,7 @@ void MatchHistory::EndGame(string eventName)
 						matchValues["Saves"] = to_string(localPrimaryPlayer.GetMatchSaves());
 						matchValues["Shots"] = to_string(localPrimaryPlayer.GetMatchShots());
 						matchValues["Demos"] = to_string(localPrimaryPlayer.GetMatchDemolishes());
-						gameWrapper->SetTimeout([this, steamIdentification, playlistId](GameWrapper* gameWrapper) {
+						gameWrapper->SetTimeout([this, uniqueID, playlistId](GameWrapper* gameWrapper) {
 							//cvarManager->log("Entering SetTimeout!");
 							string filePath = getFilePath();
 							if (!ifstream(filePath)) {
@@ -419,7 +421,7 @@ void MatchHistory::EndGame(string eventName)
 							matchesFile.close();
 							getTotalLines(filePath);
 							//cvarManager->log("Exiting SetTimeout!");
-						}, 6.f);
+							}, 6.f);
 					}
 				}
 			}
@@ -430,9 +432,9 @@ void MatchHistory::EndGame(string eventName)
 
 string MatchHistory::getFilePath() {
 	//cvarManager->log("Entering getFilePath!");
-	SteamID steamIdentification;
-	steamIdentification.ID = gameWrapper->GetSteamID();
-	string filePath = "./bakkesmod/data/" + to_string(steamIdentification.ID) + "_MatchHistory.csv";
+	UniqueIDWrapper uniqueID;
+	uniqueID = gameWrapper->GetUniqueID();
+	string filePath = gameWrapper->GetDataFolder().string() + "\\" + to_string(uniqueID.GetUID()) + "_MatchHistory.csv";
 	return filePath;
 	//cvarManager->log("Exiting getFilePath!");
 }
@@ -490,6 +492,22 @@ string MatchHistory::fuzzyTime(unsigned long timeRaw) {
 	}
 	//cvarManager->log("Exiting fuzzyTime!");
 	return tmp;
+}
+
+void MatchHistory::UpdateStats(UniqueIDWrapper id)
+{
+	ServerWrapper sw = gameWrapper->GetOnlineGame();
+	if (!sw.IsNull()) {
+		//cvarManager->log("sw is not null!");
+		GameSettingPlaylistWrapper playlist = sw.GetPlaylist();
+		//cvarManager->log("playlist gotten!");
+		if (!playlist.IsLanMatch() && !playlist.IsPrivateMatch()) {
+			int playlistId = playlist.GetPlaylistId();
+			UniqueIDWrapper uniqueID;
+			uniqueID = gameWrapper->GetUniqueID();
+			myMMR = gameWrapper->GetMMRWrapper().GetPlayerMMR(uniqueID, playlistId);
+		}
+	}
 }
 
 void MatchHistory::onUnload()
